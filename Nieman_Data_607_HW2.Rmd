@@ -1,0 +1,58 @@
+---
+title: "Data 607 HW 2"
+author: "Jeff Nieman"
+date: "February 8, 2016"
+output: html_document
+---
+
+
+
+```{r  read file  }
+#read the two data files from the github I created
+tbdata1 <- read.csv("https://raw.githubusercontent.com/jeffnieman11/tb_database/master/tb(1).csv", header=FALSE)
+popdata <- read.csv("https://raw.githubusercontent.com/jeffnieman11/tb_database/master/population.csv")
+head(tbdata1)
+head(popdata)
+
+#create column headers
+colnames(tbdata1) <-c("Country", "Year", "Sex", "Child", "Adult", "Elderly")
+
+#correct the -1 in the data frame
+tbdata1$Child <- gsub(-1,0,tbdata1$Child)
+tbdata1$Adult <- gsub(-1,0,tbdata1$Adult)
+tbdata1$Elderly <- gsub(-1,0,tbdata1$Elderly)
+head(tbdata1)
+
+#sum up the cases
+tbdata1$Child <- as.numeric(tbdata1$Child)
+tbdata1$Adult <- as.numeric(tbdata1$Adult)
+tbdata1$Elderly <- as.numeric(tbdata1$Elderly)
+tbdata1$Cases <- (tbdata1$Child + tbdata1$Adult + tbdata1$Elderly)
+head(tbdata1)
+
+#create subsets for males and females
+tbdatamale <- subset(tbdata1, tbdata1$Sex=="male")
+head(tbdatamale)
+tbdatafemale <- subset(tbdata1, tbdata1$Sex == "female")
+head(tbdatafemale)
+
+#join male and female subset when year and country match and sum up all cases
+library(sqldf)
+tbdata2 <- sqldf("select tbdatamale.Country, tbdatamale.Year, tbdatamale.Cases as 'malecases', tbdatafemale.Cases as 'femalecases' from tbdatamale inner join tbdatafemale on tbdatamale.Country = tbdatafemale.Country and tbdatamale.Year = tbdatafemale.Year")
+tbdata2$malecases <- as.numeric(tbdata2$malecases)
+tbdata2$femalecases <- as.numeric(tbdata2$femalecases)
+tbdata2$Cases <- tbdata2$malecases + tbdata2$femalecases
+head(tbdata2)
+
+#join with the population by year and country
+tbpopjoin <- sqldf("select tbdata2.Country, tbdata2.Year, Cases, population from tbdata2 inner join popdata on tbdata2.Country = popdata.country and tbdata2.Year = popdata.year")
+head(tbpopjoin)
+
+#create rate value
+tbpopjoin$Rate <- tbpopjoin$Cases/tbpopjoin$population
+head(tbpopjoin)
+
+#eliminate extra columns and create the R data frame with the proper data
+tbanswer <- tbpopjoin[,c(1,2,5)]
+head(tbanswer)
+
